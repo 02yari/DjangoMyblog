@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Todos los Posts - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h2>Últimos Posts creados</h2>
+        
+        {% for post in page_obj %}
+            <div class="card post-card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">
+                        <a href="{{ post.get_absolute_url }}" class="text-decoration-none">
+                            {{ post.title }}
+                        </a>
+                    </h3>
+                    <p class="card-text text-muted">
+                        <small>
+                            Por <strong>{{ post.author.first_name }} {{ post.author.last_name }}</strong>
+                            el {{ post.published_date|date:"d M Y" }}
+                        </small>
+                    </p>
+                    <p class="card-text">
+                        {{ post.content|truncatewords:30 }}
+                    </p>
+                    <a href="{{ post.get_absolute_url }}" class="btn btn-primary">
+                        Leer más
+                    </a>
+                    <span class="badge bg-secondary">
+                        {{ post.comments.count }} comentario{{ post.comments.count|pluralize }}
+                    </span>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">
+                <h4>No hay posts publicados</h4>
+                <p>¡Vuelve pronto para ver nuevos contenidos!</p>
+            </div>
+        {% endfor %}
+        
+        <!-- Paginación -->
+        {% if page_obj.has_other_pages %}
+            <nav aria-label="Paginación">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5>Sobre el Blog</h5>
+            </div>
+            <div class="card-body">
+                <p>Bienvenido a mi blog personal donde comparto mis pensamientos, experiencias y conocimientos.</p>
+                <a href="/admin/" class="btn btn-outline-primary btn-sm">Panel Admin</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
