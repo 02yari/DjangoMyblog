@@ -16,6 +16,20 @@
         <div class="container">
             <h1><a href="{% url 'blog:post_list' %}" class="text-white text-decoration-none">Mi Blog Personal XD</a></h1>
             <p class="lead">Compartiendo ideas y experiencias</p>
+
+            {% if user.is_authenticated %}
+                {% with profile=user.profile|default_if_none:'' %}
+                    {% if profile and profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="Avatar" width="30" class="rounded-circle">
+                    {% endif %}
+            {% endwith %}
+
+                <a href="{% url 'blog:profile' %}" class="btn btn-light btn-sm">Perfil</a>
+                <a href="{% url 'blog:logout' %}" class="btn btn-light btn-sm">Cerrar sesión</a>
+             {% else %}
+             <a href="{% url 'blog:login' %}" class="btn btn-light btn-sm">Iniciar sesión</a>
+             <a href="{% url 'blog:signup' %}" class="btn btn-light btn-sm">Registrarse</a>
+             {% endif %}
         </div>
     </header>
     
@@ -38,5 +52,7 @@
     </footer>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    
 </body>
 </html>

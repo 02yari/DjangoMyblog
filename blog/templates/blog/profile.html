@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Perfil{% endblock %}
+
+{% block content %}
+<h2>Perfil de {{ user.username }}</h2>
+
+{% with profile=user.profile|default_if_none:'' %}
+  {% if profile and profile.avatar %}
+      <img src="{{ profile.avatar.url }}" alt="Avatar" width="150">
+  {% endif %}
+  {% if profile %}
+      <p>{{ profile.bio }}</p>
+  {% endif %}
+{% endwith %}
+
+<a href="{% url 'blog:profile_edit' %}" class="btn btn-primary">Editar perfil</a>
+{% endblock %}
