@@ -23,13 +23,27 @@ class PostAdmin(admin.ModelAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'email', 'post', 'created_date', 'active')
-    list_filter = ('active', 'created_date')
-    search_fields = ('name', 'email', 'content')
-    actions = ['approve_comments']
-    list_editable = ('active',)
+    # columnas que verás en la lista
+    list_display = ('post', 'user', 'name', 'email', 'short_content', 'created_date', 'is_approved', 'active')
+    list_filter = ('is_approved', 'active', 'created_date')
+    search_fields = ('user__username', 'name', 'email', 'content')
+    actions = ['approve_comments', 'reject_comments']
+    list_editable = ('is_approved', 'active')
 
+    # acción para aprobar
     def approve_comments(self, request, queryset):
-        queryset.update(active=True)
-        self.message_user(request, f'{queryset.count()} comentarios aprobados.')
+        updated = queryset.update(is_approved=True, active=True)
+        self.message_user(request, f"{updated} comentario(s) aprobados correctamente.")
     approve_comments.short_description = 'Aprobar comentarios seleccionados'
+
+    # acción para rechazar
+    def reject_comments(self, request, queryset):
+        updated = queryset.update(is_approved=False, active=False)
+        self.message_user(request, f"{updated} comentario(s) rechazados.")
+    reject_comments.short_description = 'Rechazar comentarios seleccionados'
+
+    # para no mostrar el comentario entero en la tabla (demasiado largo),
+    # definimos un método que recorta el content a p.ej. 50 caracteres
+    def short_content(self, obj):
+        return (obj.content[:47] + '...') if len(obj.content) > 50 else obj.content
+    short_content.short_description = 'Comentario'
