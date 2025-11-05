@@ -2,8 +2,7 @@ from django import forms
 from .models import Comment
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Profile
-from .models import Post
+from .models import Profile, Post, Review
 
 class CommentForm(forms.ModelForm):
     class Meta:
@@ -51,4 +50,11 @@ class PostForm(forms.ModelForm):
         model = Post
         fields = ['title', 'content', 'excerpt', 'cover', 'published']
 
-
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model = Review
+        fields = ['rating', 'comment']
+        widgets = {
+            'rating': forms.NumberInput(attrs={'min': 1, 'max': 5}),
+            'comment': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Escribe tu review...'}),
+        }

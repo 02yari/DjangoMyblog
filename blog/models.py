@@ -5,7 +5,7 @@ from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from ckeditor.fields import RichTextField
-
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
 class Post(models.Model):
@@ -82,3 +82,22 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created and not instance.is_staff and not instance.is_superuser:
         from .models import Profile
         Profile.objects.create(user=instance)
+
+
+class Review(models.Model):
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='reviews')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user')
+        ordering = ['-created_at']
+        verbose_name = 'Review'
+        verbose_name_plural = 'Reviews'
+
+    def __str__(self):
+        return f'Review de {self.user.username} en {self.post.title} ({self.rating})'

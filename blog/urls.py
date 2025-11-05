@@ -20,4 +20,5 @@ urlpatterns = [
     path('comment/<int:comment_id>/approve/', views.approve_comment, name='approve_comment'),
     path('comment/<int:comment_id>/reject/', views.reject_comment, name='reject_comment'),
 
+    path('post/<slug:slug>/review/', views.add_review, name='add_review'),
 ]

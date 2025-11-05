@@ -1,13 +1,13 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.contrib import messages
-from .models import Post, Comment
-from .forms import CommentForm, SignUpForm, ProfileForm, PostForm
+from .models import Post, Comment, Review
+from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
-
+from django.db.models import Avg
 
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
@@ -24,8 +24,17 @@ def post_detail(request, slug):
     comments = post.comments.filter(active=True)
     new_comment = None
 
+     # Calcular promedio de reviews
+    average_rating = post.reviews.aggregate(Avg('rating'))['rating__avg']
+
+    # Verificar si el usuario ya hizo review
+    user_has_reviewed = False
+    if request.user.is_authenticated:
+        user_has_reviewed = post.reviews.filter(user=request.user).exists()
+
     if request.method == 'POST':
         comment_form = CommentForm(data=request.POST)
+        review_form = ReviewForm()
         if comment_form.is_valid():
             # Crear comentario pero no guardarlo aún
             new_comment = comment_form.save(commit=False)
@@ -37,12 +46,16 @@ def post_detail(request, slug):
             return redirect('blog:post_detail', slug=post.slug)
     else:
         comment_form = CommentForm()
+        review_form = ReviewForm() 
 
     return render(request, 'blog/post_detail.html', {
         'post': post,
         'comments': comments,
         'new_comment': new_comment,
-        'comment_form': comment_form
+        'comment_form': comment_form,
+        'review_form': review_form, 
+        'average_rating': average_rating,
+        'user_has_reviewed': user_has_reviewed,
     })
 
 
@@ -182,3 +195,28 @@ def reject_comment(request, comment_id):
     comment.delete()
     messages.warning(request, "Comentario eliminado.")
     return redirect('blog:post_detail', pk=comment.post.id)
+
+@login_required
+def add_review(request, slug):
+    post = get_object_or_404(Post, slug=slug)
+    
+    # Evitar que el usuario haga más de un review por post
+    if Review.objects.filter(post=post, user=request.user).exists():
+        messages.warning(request, "Ya has hecho una review de este post.")
+        return redirect('blog:post_detail', slug=post.slug)
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.user = request.user
+            review.post = post
+            review.save()
+            messages.success(request, "Tu review ha sido enviada.")
+            return redirect('blog:post_detail', slug=post.slug)
+        else:
+            messages.error(request, "Por favor corrige los errores del formulario.")
+    else:
+        form = ReviewForm()
+
+    return redirect('blog:post_detail', slug=post.slug)

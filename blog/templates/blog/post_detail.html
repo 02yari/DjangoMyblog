@@ -20,6 +20,34 @@
             <div class="post-content">
                 {{ post.content|linebreaks }}
             </div>
+
+            <!-- Aquí iría la sección 4 de mostrar promedio de ratings en detalle de post -->
+            <div class="mb-3">
+                <strong>Calificación promedio:</strong>
+                {% if average_rating %}
+                    {{ average_rating|floatformat:1 }} / 5
+                    ({{ post.reviews.count }} reviews)
+                {% else %}
+                    Sin reviews aún
+                {% endif %}
+            </div>
+
+            <!-- Formulario para dejar review -->
+            {% if user.is_authenticated %}
+                    {% if not user_has_reviewed %}
+                    <form method="post" action="{% url 'blog:add_review' post.slug %}">
+                        {% csrf_token %}
+                        {{ review_form.as_p }}
+                        <button type="submit" class="btn btn-primary btn-sm">Enviar review</button>
+                    </form>
+                {% else %}
+                    <p>Ya has hecho una review de este post.</p>
+                {% endif %}
+            {% else %}
+                <p><a href="{% url 'blog:login' %}">Inicia sesión</a> para dejar una review.</p>
+            {% endif %}
+
+
         </article>
 
         <!--Seccion de comentarios -->
