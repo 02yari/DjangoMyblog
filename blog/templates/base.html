@@ -22,14 +22,13 @@
                     {% if profile and profile.avatar %}
                         <img src="{{ profile.avatar.url }}" alt="Avatar" width="30" class="rounded-circle">
                     {% endif %}
-            {% endwith %}
-
+                {% endwith %}
                 <a href="{% url 'blog:profile' %}" class="btn btn-light btn-sm">Perfil</a>
                 <a href="{% url 'blog:logout' %}" class="btn btn-light btn-sm">Cerrar sesión</a>
-             {% else %}
-             <a href="{% url 'blog:login' %}" class="btn btn-light btn-sm">Iniciar sesión</a>
-             <a href="{% url 'blog:signup' %}" class="btn btn-light btn-sm">Registrarse</a>
-             {% endif %}
+            {% else %}
+                <a href="{% url 'blog:login' %}" class="btn btn-light btn-sm">Iniciar sesión</a>
+                <a href="{% url 'blog:signup' %}" class="btn btn-light btn-sm">Registrarse</a>
+            {% endif %}
         </div>
     </header>
     
