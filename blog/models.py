@@ -6,6 +6,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from ckeditor.fields import RichTextField
 from django.core.validators import MinValueValidator, MaxValueValidator
+from taggit.managers import TaggableManager
 
 
 class Post(models.Model):
@@ -18,12 +19,10 @@ class Post(models.Model):
     #"Se agrega cover para subir imagen de portada."
     cover = models.ImageField(upload_to='covers/', null=True, blank=True, verbose_name='Imagen de portada') 
     excerpt = models.TextField(max_length=300, blank=True, verbose_name='Resumen')
-    
-
     created_date = models.DateTimeField(default=timezone.now, verbose_name='Fecha de creación')
     published_date = models.DateTimeField(blank=True, null=True, verbose_name='Fecha de publicación')
     published = models.BooleanField(default=False, verbose_name='Publicado')
-
+    tags = TaggableManager(blank=True, verbose_name='Etiquetas')
     class Meta:
         ordering = ['-created_date']
         verbose_name = 'Post'

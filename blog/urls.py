@@ -21,4 +21,6 @@ urlpatterns = [
     path('comment/<int:comment_id>/reject/', views.reject_comment, name='reject_comment'),
 
     path('post/<slug:slug>/review/', views.add_review, name='add_review'),
+    path('tag/<slug:slug>/', views.posts_by_tag, name='posts_by_tag'),
+    path('search/', views.search_posts, name='search_posts'),
 ]

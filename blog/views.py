@@ -8,12 +8,15 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Avg
+from taggit.models import Tag
+from django.db.models import Q
+from django.core.paginator import Paginator
 
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
     posts = Post.objects.filter(published=True).order_by('-published_date')
     # Paginación
-    paginator = Paginator(posts, 5)  # 5 posts por página
+    paginator = Paginator(posts, 10)  # 10 posts por página
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     return render(request, 'blog/post_list.html', {'page_obj': page_obj})
@@ -57,7 +60,6 @@ def post_detail(request, slug):
         'average_rating': average_rating,
         'user_has_reviewed': user_has_reviewed,
     })
-
 
 # Vista para el formulario de registro de usuario
 def signup(request):
@@ -220,3 +222,30 @@ def add_review(request, slug):
         form = ReviewForm()
 
     return redirect('blog:post_detail', slug=post.slug)
+
+def posts_by_tag(request, slug):
+    tag = get_object_or_404(Tag, slug=slug)
+    posts = Post.objects.filter(published=True, tags__slug=slug)
+    context = {
+        'tag': tag,
+        'posts': posts,
+    }
+    return render(request, 'blog/posts_by_tag.html', context)
+
+def search_posts(request):
+    query = request.GET.get('q')
+    posts = Post.objects.filter(published=True)
+    if query:
+        posts = posts.filter(Q(title__icontains=query) | Q(content__icontains=query))
+    
+    paginator = Paginator(posts, 10)  # 10 posts por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'posts': posts,
+        'query': query,
+        'page_obj': page_obj,
+    }
+    return render(request, 'blog/search_results.html', context)
+

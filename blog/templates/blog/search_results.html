@@ -1,0 +1,6 @@
+<h2>Resultados de búsqueda para "{{ query }}"</h2>
+{% for post in posts %}
+    <!-- mostrar posts -->
+{% empty %}
+    <p>No se encontraron resultados.</p>
+{% endfor %}
