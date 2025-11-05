@@ -6,6 +6,7 @@ from .forms import CommentForm, SignUpForm, ProfileForm, PostForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 
 
 def post_list(request):
@@ -152,3 +153,32 @@ def delete_post(request, slug):
         return redirect('blog:post_list')
 
     return render(request, 'blog/post_confirm_delete.html', {'post': post})
+
+# vista para agregar comentarios
+def add_comment(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+
+    if request.method == "POST":
+        content = request.POST.get("content")
+        if content:
+            Comment.objects.create(post=post, user=request.user, content=content)
+            messages.success(request, "Tu comentario ha sido enviado y está pendiente de aprobación.")
+        else:
+            messages.error(request, "No puedes enviar un comentario vacío.")
+    return redirect('blog:post_detail', slug=post.slug)
+
+
+@staff_member_required
+def approve_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    comment.is_approved = True
+    comment.save()
+    messages.success(request, "Comentario aprobado.")
+    return redirect('blog:post_detail', pk=comment.post.id)
+
+@staff_member_required
+def reject_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    comment.delete()
+    messages.warning(request, "Comentario eliminado.")
+    return redirect('blog:post_detail', pk=comment.post.id)

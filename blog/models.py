@@ -42,11 +42,13 @@ class Post(models.Model):
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100, verbose_name='Nombre')
     email = models.EmailField(verbose_name='Email')
     content = models.TextField(verbose_name='Comentario')
     created_date = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
     active = models.BooleanField(default=True, verbose_name='Activo')
+    is_approved = models.BooleanField(default=False, verbose_name='Aprobado')
 
     class Meta:
         ordering = ['created_date']
@@ -54,6 +56,8 @@ class Comment(models.Model):
         verbose_name_plural = 'Comentarios'
 
     def __str__(self):
+        if self.user:
+            return f'Comentario de {self.user.username} en {self.post.title}'
         return f'Comentario de {self.name} en {self.post.title}'
 
 # Clase profile

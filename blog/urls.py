@@ -16,5 +16,8 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
 
-    
+    path('post/<int:post_id>/comment/', views.add_comment, name='add_comment'),
+    path('comment/<int:comment_id>/approve/', views.approve_comment, name='approve_comment'),
+    path('comment/<int:comment_id>/reject/', views.reject_comment, name='reject_comment'),
+
 ]
