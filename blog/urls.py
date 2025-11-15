@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from . import views
 from django.contrib.auth import views as auth_views
 
@@ -23,4 +23,5 @@ urlpatterns = [
     path('post/<slug:slug>/review/', views.add_review, name='add_review'),
     path('tag/<slug:slug>/', views.posts_by_tag, name='posts_by_tag'),
     path('search/', views.search_posts, name='search_posts'),
+    path('ckeditor5/', include('django_ckeditor_5.urls')),
 ]

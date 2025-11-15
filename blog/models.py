@@ -4,10 +4,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from ckeditor.fields import RichTextField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from taggit.managers import TaggableManager
-
+from django_ckeditor_5.fields import CKEditor5Field
 
 class Post(models.Model):
     title = models.CharField(max_length=200, verbose_name='Título')
@@ -15,7 +14,7 @@ class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Autor')
 
     #content = models.TextField(verbose_name='Contenido')
-    content = RichTextField(verbose_name='Contenido') # <-- reemplaza TextField por RichTextField
+    content = CKEditor5Field('Contenido') # <-- reemplaza TextField por RichTextField
     #"Se agrega cover para subir imagen de portada."
     cover = models.ImageField(upload_to='covers/', null=True, blank=True, verbose_name='Imagen de portada') 
     excerpt = models.TextField(max_length=300, blank=True, verbose_name='Resumen')
@@ -44,7 +43,7 @@ class Comment(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=100, verbose_name='Nombre')
     email = models.EmailField(verbose_name='Email')
-    content = models.TextField(verbose_name='Comentario')
+    content =CKEditor5Field('Comentario')
     created_date = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
     active = models.BooleanField(default=True, verbose_name='Activo')
     is_approved = models.BooleanField(default=False, verbose_name='Aprobado')
@@ -72,14 +71,7 @@ class Profile(models.Model):
 #post_save para crear o actualizar el perfil del usuario automáticamente
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    # Solo crear perfil si el usuario NO es staff o superusuario
     if created and not instance.is_staff and not instance.is_superuser:
-        from .models import Profile
         Profile.objects.create(user=instance)
 
 
@@ -100,3 +92,4 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Review de {self.user.username} en {self.post.title} ({self.rating})'
+
