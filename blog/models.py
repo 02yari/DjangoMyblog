@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.core.validators import MinValueValidator, MaxValueValidator
 from taggit.managers import TaggableManager
 from django_ckeditor_5.fields import CKEditor5Field
+from django.conf import settings
 
 class Post(models.Model):
     title = models.CharField(max_length=200, verbose_name='Título')
@@ -93,3 +94,23 @@ class Review(models.Model):
     def __str__(self):
         return f'Review de {self.user.username} en {self.post.title} ({self.rating})'
 
+
+
+class Reaction(models.Model):
+    post = models.ForeignKey('Post', on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    REACTION_CHOICES = [
+        ('like', '👍'),
+        ('love', '❤️'),
+        ('haha', '😂'),
+        ('wow', '😮'),
+    ]
+    type = models.CharField(max_length=10, choices=REACTION_CHOICES)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user', 'type')
+
+    def __str__(self):
+        return f"{self.user} reacted {self.type} on {self.post}"
