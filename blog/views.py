@@ -1,4 +1,4 @@
-from django.db.models import Avg, Q
+from django.db.models import Avg, Q, Sum
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, login, logout
@@ -30,16 +30,13 @@ def post_list(request):
 def post_detail(request, slug):
     """Vista para mostrar un post específico con sus comentarios"""
     post = get_object_or_404(Post, slug=slug, published=True)
-    comments = post.comments.filter(active=True)
     new_comment = None
 
      # Calcular promedio de reviews
     average_rating = post.reviews.aggregate(Avg('rating'))['rating__avg']
 
     # Calcular conteo de reacciones
-    from .models import Reaction
     counts = { key: post.reactions.filter(type=key).count() for key,_ in Reaction.REACTION_CHOICES }
-
 
     # Verificar si el usuario ya hizo review
     user_has_reviewed = False
@@ -61,6 +58,9 @@ def post_detail(request, slug):
     else:
         comment_form = CommentForm()
         review_form = ReviewForm() 
+
+    comments = post.comments.filter(active=True, is_approved=True).annotate(
+        score=Sum('votes__vote')).order_by('-pinned', '-score', 'created_date')
 
     return render(request, 'blog/post_detail.html', {
         'post': post,
