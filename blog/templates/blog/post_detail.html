@@ -66,6 +66,15 @@
                     <strong>{{ comment.user.username }}</strong><br>
                     <p>{{ comment.content }}</p>
                     <small class="text-muted">{{ comment.created_date|date:"d M Y H:i" }}</small>
+                    
+                    {% if user.is_staff %}
+                        <form method="post" action="{% url 'blog:toggle_pin_comment' comment.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-warning">
+                                {% if comment.pinned %}Desfijar{% else %}Fijar{% endif %}
+                            </button>
+                        </form>
+                    {% endif %}
 
                     {% if user == post.author and not comment.is_approved %}
                         <a href="{% url 'blog:approve_comment' comment.id %}" class="btn btn-success btn-sm mt-2">Aprobar</a>

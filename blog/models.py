@@ -48,6 +48,7 @@ class Comment(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
     active = models.BooleanField(default=True, verbose_name='Activo')
     is_approved = models.BooleanField(default=False, verbose_name='Aprobado')
+    pinned = models.BooleanField(default=False, verbose_name="Fijado")
 
     class Meta:
         ordering = ['created_date']
