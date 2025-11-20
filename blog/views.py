@@ -11,7 +11,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from .models import Post, Comment, Review, Reaction
+from .models import Post, Comment, Review, Reaction, CommentVote
 from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from taggit.models import Tag
 
@@ -348,3 +348,35 @@ def toggle_reaction(request, post_id, reaction_type):
 
     # Default -> JSON
     return JsonResponse({"status": "ok", "action": action, "counts": counts})
+
+@login_required
+def toggle_vote(request, comment_id, vote_type):
+    comment = get_object_or_404(Comment, id=comment_id)
+    user = request.user
+
+    if vote_type == "up":
+        value = 1
+    elif vote_type == "down":
+        value = -1
+    else:
+        return JsonResponse({"error": "Invalid vote type"}, status=400)
+
+    # Buscamos si ya existe un voto del usuario para ese comentario
+    vote, created = CommentVote.objects.get_or_create(comment=comment, user=user, defaults={"vote": value})
+
+    if not created:
+        if vote.vote == value:
+            vote.vote = 0 
+        else:
+            vote.vote = value 
+        vote.save()
+
+    # Contar votos actuales
+    up_count = CommentVote.objects.filter(comment=comment, vote=1).count()
+    down_count = CommentVote.objects.filter(comment=comment, vote=-1).count()
+
+    return JsonResponse({
+        "up": up_count,
+        "down": down_count,
+        "current": vote.vote
+    })
