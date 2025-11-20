@@ -380,3 +380,9 @@ def toggle_vote(request, comment_id, vote_type):
         "down": down_count,
         "current": vote.vote
     })
+
+def toggle_pin_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    comment.pinned = not comment.pinned
+    comment.save()
+    return redirect(comment.post.get_absolute_url())
