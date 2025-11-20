@@ -16,7 +16,7 @@ from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from taggit.models import Tag
 
 # Cooldown en segundos entre reacciones (por usuario+post)
-REACTION_COOLDOWN = 1
+REACTION_COOLDOWN = 2
 
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
@@ -35,6 +35,11 @@ def post_detail(request, slug):
 
      # Calcular promedio de reviews
     average_rating = post.reviews.aggregate(Avg('rating'))['rating__avg']
+
+    # Calcular conteo de reacciones
+    from .models import Reaction
+    counts = { key: post.reactions.filter(type=key).count() for key,_ in Reaction.REACTION_CHOICES }
+
 
     # Verificar si el usuario ya hizo review
     user_has_reviewed = False
@@ -65,6 +70,7 @@ def post_detail(request, slug):
         'review_form': review_form, 
         'average_rating': average_rating,
         'user_has_reviewed': user_has_reviewed,
+        'counts': counts,
     })
 
 # Vista para el formulario de registro de usuario
@@ -305,6 +311,11 @@ def toggle_reaction(request, post_id, reaction_type):
 
     # Rate-limit simple: una acción por REACTION_COOLDOWN por user+post
     cache_key = f"reaction-cooldown:{request.user.id}:{post.id}"
+    #evita spameo extremo y operaciones repetidas.
+    if cache.get(cache_key):
+        return JsonResponse({"error": "Too Many Requests"}, status=429)
+    cache.set(cache_key, True, timeout=REACTION_COOLDOWN)
+
     last = cache.get(cache_key)
     now = timezone.now().timestamp()
     if last and (now - float(last)) < REACTION_COOLDOWN:

@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
-
+{% load dict_utils %}
 {% block title %}{{ post.title }} - {{ block.super }}{% endblock %}
 
 {% block content %}
+
 <div class="row">
     <!-- Columna principal -->
     <div class="col-md-8">
@@ -19,6 +20,10 @@
             
             <div class="post-content">
                 {{ post.content|linebreaks }}
+            </div>
+
+            <div id="reactions-area">
+                {% include "blog/_reactions_fragment.html" with post=post counts=counts %}
             </div>
 
             <!-- Aquí iría la sección 4 de mostrar promedio de ratings en detalle de post -->
@@ -46,6 +51,7 @@
             {% else %}
                 <p><a href="{% url 'blog:login' %}">Inicia sesión</a> para dejar una review.</p>
             {% endif %}
+
 
 
         </article>
