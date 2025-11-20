@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator
 from django.contrib import messages
-from .models import Post, Comment, Review
+from .models import Post, Comment, Review, Reaction
 from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
@@ -11,6 +11,8 @@ from django.db.models import Avg
 from taggit.models import Tag
 from django.db.models import Q
 from django.core.paginator import Paginator
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
@@ -249,3 +251,36 @@ def search_posts(request):
     }
     return render(request, 'blog/search_results.html', context)
 
+def toggle_reaction(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    reaction_type = request.POST.get("type")  # viene del botón
+
+    if reaction_type not in dict(Reaction.REACTION_CHOICES):
+        return JsonResponse({"error": "Tipo de reacción inválido"}, status=400)
+
+    # Buscar si ya existe la reacción de este usuario en este post con este tipo
+    reaction, created = Reaction.objects.get_or_create(
+        post=post,
+        user=request.user,
+        type=reaction_type
+    )
+
+    if not created:
+        # Ya existía → se elimina (toggle OFF)
+        reaction.delete()
+        toggled = "removed"
+    else:
+        # No existía → se creó (toggle ON)
+        toggled = "added"
+
+    # Contar cuántas reacciones hay por tipo
+    counts = {
+        key: post.reactions.filter(type=key).count()
+        for key, _ in Reaction.REACTION_CHOICES
+    }
+
+    return JsonResponse({
+        "status": "ok",
+        "action": toggled,
+        "counts": counts
+    })

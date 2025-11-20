@@ -1,6 +1,7 @@
 from django.urls import path, include
 from . import views
 from django.contrib.auth import views as auth_views
+from .views import toggle_reaction
 
 
 app_name = 'blog'
@@ -24,4 +25,5 @@ urlpatterns = [
     path('tag/<slug:slug>/', views.posts_by_tag, name='posts_by_tag'),
     path('search/', views.search_posts, name='search_posts'),
     path('ckeditor5/', include('django_ckeditor_5.urls')),
+    path("post/<int:post_id>/react/", toggle_reaction, name="toggle_reaction"),
 ]
