@@ -1,18 +1,22 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.core.paginator import Paginator
+from django.db.models import Avg, Q
 from django.contrib import messages
-from .models import Post, Comment, Review, Reaction
-from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
-from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models import Avg
-from taggit.models import Tag
-from django.db.models import Q
+from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse,  HttpResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.template.loader import render_to_string
+from django.utils import timezone
 from django.views.decorators.http import require_POST
+from .models import Post, Comment, Review, Reaction
+from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
+from taggit.models import Tag
+
+# Cooldown en segundos entre reacciones (por usuario+post)
+REACTION_COOLDOWN = 1
 
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
@@ -284,3 +288,52 @@ def toggle_reaction(request, post_id):
         "action": toggled,
         "counts": counts
     })
+
+def toggle_reaction(request, post_id, reaction_type):
+    """
+    Toggle a reaction for the logged user on a post.
+    URL pattern: POST /post/<post_id>/react/<reaction_type>/
+    Returns JSON by default, but if request.htmx or 'format=html' -> returns HTML fragment.
+    Implements a simple per-user+post rate-limit using cache (returns 429).
+    """
+    post = get_object_or_404(Post, id=post_id)
+
+    # Validar tipo
+    allowed = dict(Reaction.REACTION_CHOICES)
+    if reaction_type not in allowed:
+        return JsonResponse({"error": "Tipo de reacción inválido"}, status=400)
+
+    # Rate-limit simple: una acción por REACTION_COOLDOWN por user+post
+    cache_key = f"reaction-cooldown:{request.user.id}:{post.id}"
+    last = cache.get(cache_key)
+    now = timezone.now().timestamp()
+    if last and (now - float(last)) < REACTION_COOLDOWN:
+        return JsonResponse({"error": "Too Many Requests"}, status=429)
+
+    # set timestamp
+    cache.set(cache_key, str(now), timeout=REACTION_COOLDOWN)
+
+    # Toggle: get_or_create, si existía -> eliminar
+    reaction, created = Reaction.objects.get_or_create(
+        post=post,
+        user=request.user,
+        type=reaction_type
+    )
+
+    if not created:
+        reaction.delete()
+        action = "removed"
+    else:
+        action = "added"
+
+    # Contar por tipo
+    counts = {key: post.reactions.filter(type=key).count() for key, _ in Reaction.REACTION_CHOICES}
+
+    # Si es HTMX request o piden fragmento HTML -> renderizar fragmento parcial
+    wants_html = request.headers.get("HX-Request") == "true" or request.GET.get("format") == "html"
+    if wants_html:
+        html = render_to_string("blog/_reactions_fragment.html", {"post": post, "counts": counts, "user": request.user})
+        return HttpResponse(html)
+
+    # Default -> JSON
+    return JsonResponse({"status": "ok", "action": action, "counts": counts})
