@@ -114,3 +114,42 @@ class Reaction(models.Model):
 
     def __str__(self):
         return f"{self.user} reacted {self.type} on {self.post}"
+    
+class CommentVote(models.Model):
+    UP = 1
+    DOWN = -1
+    NEUTRAL = 0
+
+    VOTE_CHOICES = [
+        (UP, "Upvote"),
+        (DOWN, "Downvote"),
+        (NEUTRAL, "Neutral"),
+    ]
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    vote = models.IntegerField(choices=VOTE_CHOICES, default=NEUTRAL)
+    class Meta:
+        unique_together = ("user", "comment")
+
+    def __str__(self):
+        return f"{self.user} → {self.comment} ({self.vote})"
+
+class CommentVote(models.Model):
+    UP = 1
+    DOWN = -1
+    NEUTRAL = 0
+
+    VOTE_CHOICES = [
+        (UP, "Upvote"),
+        (DOWN, "Downvote"),
+        (NEUTRAL, "Neutral"),
+    ]
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    vote = models.IntegerField(choices=VOTE_CHOICES, default=NEUTRAL)
+    class Meta:
+        unique_together = ("user", "comment")
+
+    def __str__(self):
+        return f"{self.user} → {self.comment} ({self.vote})"
+
