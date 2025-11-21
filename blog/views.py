@@ -1,4 +1,5 @@
-from django.db.models import Avg, Q, Sum
+from django.db.models import Avg, Q, Sum,  Value as V, Count
+from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, login, logout
@@ -21,6 +22,7 @@ REACTION_COOLDOWN = 2
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
     posts = Post.objects.filter(published=True).order_by('-published_date')
+    
     # Paginación
     paginator = Paginator(posts, 10)  # 10 posts por página
     page_number = request.GET.get('page')
@@ -60,7 +62,10 @@ def post_detail(request, slug):
         review_form = ReviewForm() 
 
     comments = post.comments.filter(active=True, is_approved=True).annotate(
-        score=Sum('votes__vote')).order_by('-pinned', '-score', 'created_date')
+        up_votes=Coalesce(Count('votes', filter=Q(votes__vote=1)), V(0)),
+        down_votes=Coalesce(Count('votes', filter=Q(votes__vote=-1)), V(0)),
+        total_score=Coalesce(Sum('votes__vote'), V(0)),  # opcional, total
+    ).order_by('-pinned', '-total_score', 'created_date')
 
     return render(request, 'blog/post_detail.html', {
         'post': post,

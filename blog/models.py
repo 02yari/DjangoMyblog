@@ -132,7 +132,7 @@ class CommentVote(models.Model):
     ]
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="votes")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    vote = models.IntegerField(choices=VOTE_CHOICES, default=NEUTRAL)
+    vote = models.IntegerField(default=0)
     class Meta:
         unique_together = ("user", "comment")
 
