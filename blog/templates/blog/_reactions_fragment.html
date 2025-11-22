@@ -1,17 +1,17 @@
 {# templates/blog/_reactions_fragment.html #}
 {% load dict_utils %}
 
-<div class="reactions" id="reactions-for-post-{{ post.id }}">
+<div class="reactions">
   {% for key, emoji in post.reactions.model.REACTION_CHOICES %}
     <button
       class="btn btn-sm reaction-btn"
       hx-post="{% url 'blog:toggle_reaction' post.id key %}"
-      hx-vals='{"type":"{{ key }}"}'
+      hx-target="#reactions-area"
       hx-swap="outerHTML"
-      hx-include="this"
       hx-trigger="click"
-      >
-      {{ emoji }} <span class="badge bg-secondary">{{ counts|get_item:key }}</span>
+    >
+      {{ emoji }}
+      <span class="badge bg-secondary">{{ counts|get_item:key }}</span>
     </button>
   {% endfor %}
 </div>

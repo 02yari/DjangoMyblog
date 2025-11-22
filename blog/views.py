@@ -261,47 +261,7 @@ def search_posts(request):
     }
     return render(request, 'blog/search_results.html', context)
 
-def toggle_reaction(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
-    reaction_type = request.POST.get("type")  # viene del botón
-
-    if reaction_type not in dict(Reaction.REACTION_CHOICES):
-        return JsonResponse({"error": "Tipo de reacción inválido"}, status=400)
-
-    # Buscar si ya existe la reacción de este usuario en este post con este tipo
-    reaction, created = Reaction.objects.get_or_create(
-        post=post,
-        user=request.user,
-        type=reaction_type
-    )
-
-    if not created:
-        # Ya existía → se elimina (toggle OFF)
-        reaction.delete()
-        toggled = "removed"
-    else:
-        # No existía → se creó (toggle ON)
-        toggled = "added"
-
-    # Contar cuántas reacciones hay por tipo
-    counts = {
-        key: post.reactions.filter(type=key).count()
-        for key, _ in Reaction.REACTION_CHOICES
-    }
-
-    return JsonResponse({
-        "status": "ok",
-        "action": toggled,
-        "counts": counts
-    })
-
 def toggle_reaction(request, post_id, reaction_type):
-    """
-    Toggle a reaction for the logged user on a post.
-    URL pattern: POST /post/<post_id>/react/<reaction_type>/
-    Returns JSON by default, but if request.htmx or 'format=html' -> returns HTML fragment.
-    Implements a simple per-user+post rate-limit using cache (returns 429).
-    """
     post = get_object_or_404(Post, id=post_id)
 
     # Validar tipo
@@ -315,36 +275,44 @@ def toggle_reaction(request, post_id, reaction_type):
     if cache.get(cache_key):
         return JsonResponse({"error": "Too Many Requests"}, status=429)
     cache.set(cache_key, True, timeout=REACTION_COOLDOWN)
+    existing = Reaction.objects.filter(post=post, user=request.user).first()
+    if existing:
+        if existing.type == reaction_type:
+            # mismo emoji → quitar
+            existing.delete()
+            action = "removed"
+        else:
+            # cambiar el emoji
+            existing.type = reaction_type
+            existing.save()
+            action = "changed"
+    else:
+        # crear nueva
+        Reaction.objects.create(
+            post=post,
+            user=request.user,
+            type=reaction_type
+        )
+        action = "added"
+    
+   # === RECALCULAR CONTEOS ===
+    counts = {
+        key: post.reactions.filter(type=key).count()
+        for key, _ in Reaction.REACTION_CHOICES
+    }
 
-    last = cache.get(cache_key)
-    now = timezone.now().timestamp()
-    if last and (now - float(last)) < REACTION_COOLDOWN:
-        return JsonResponse({"error": "Too Many Requests"}, status=429)
-
-    # set timestamp
-    cache.set(cache_key, str(now), timeout=REACTION_COOLDOWN)
-
-    # Toggle: get_or_create, si existía -> eliminar
-    reaction, created = Reaction.objects.get_or_create(
-        post=post,
-        user=request.user,
-        type=reaction_type
+    # === SI ES HTMX → DEVOLVER HTML ===
+    wants_html = (
+        request.headers.get("HX-Request") == "true"
+        or request.GET.get("format") == "html"
     )
 
-    if not created:
-        reaction.delete()
-        action = "removed"
-    else:
-        action = "added"
-
-    # Contar por tipo
-    counts = {key: post.reactions.filter(type=key).count() for key, _ in Reaction.REACTION_CHOICES}
-
-    # Si es HTMX request o piden fragmento HTML -> renderizar fragmento parcial
-    wants_html = request.headers.get("HX-Request") == "true" or request.GET.get("format") == "html"
     if wants_html:
-        html = render_to_string("blog/_reactions_fragment.html", {"post": post, "counts": counts, "user": request.user})
+        html = render_to_string(
+            "blog/_reactions_fragment.html",
+            {"post": post, "counts": counts, "user": request.user}
+        )
         return HttpResponse(html)
 
-    # Default -> JSON
+    # === RESPUESTA JSON POR DEFECTO ===
     return JsonResponse({"status": "ok", "action": action, "counts": counts})
