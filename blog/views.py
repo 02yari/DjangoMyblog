@@ -12,9 +12,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from .models import Post, Comment, Review, Reaction, CommentVote
+from .models import Post, Comment, Review, Reaction, CommentVote, Notification, User
 from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from taggit.models import Tag
+import re
 
 # Cooldown en segundos entre reacciones (por usuario+post)
 REACTION_COOLDOWN = 2
@@ -194,9 +195,29 @@ def add_comment(request, post_id):
         content = request.POST.get("content")
         if content:
             Comment.objects.create(post=post, user=request.user, content=content)
+            #detección de menciones al guardar un comentario
+            comment = Comment.objects.create(post=post, user=request.user, content=content)
+            # 🔹 Detectar menciones @username
+            pattern = r"@(\w+)"
+            mentioned_usernames = re.findall(pattern, comment.content)
+            #verificar si el usuario existe
+            for username in mentioned_usernames:
+                user = User.objects.filter(username=username).first()
+                if user:
+                    Notification.objects.create(
+                        user=user,
+                        origin_user=request.user,
+                        post=post,
+                        comment=comment,
+                        message=f"@{request.user.username} te mencionó en un comentario.",
+                        is_read=False
+                    )
+                # Si no existe el usuario, se ignora automáticamente
+            
             messages.success(request, "Tu comentario ha sido enviado y está pendiente de aprobación.")
         else:
             messages.error(request, "No puedes enviar un comentario vacío.")
+
     return redirect('blog:post_detail', slug=post.slug)
 
 
