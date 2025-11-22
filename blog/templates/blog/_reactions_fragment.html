@@ -1,7 +1,7 @@
 {# templates/blog/_reactions_fragment.html #}
 {% load dict_utils %}
 
-<div class="reactions">
+<div class="reactions" id="reactions-area">
   {% for key, emoji in post.reactions.model.REACTION_CHOICES %}
     <button
       class="btn btn-sm reaction-btn"
