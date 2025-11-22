@@ -382,3 +382,9 @@ def toggle_pin_comment(request, comment_id):
     comment.save()
     return redirect(comment.post.get_absolute_url())
 
+@login_required
+def profile(request):
+    notifications = request.user.notifications.order_by('-created_at')
+    return render(request, "blog/profile.html", {
+        "notifications": notifications
+    })
