@@ -140,4 +140,42 @@ class CommentVote(models.Model):
         return f"{self.user} → {self.comment} ({self.vote})"
 
 
+class Notification(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='notifications'
+    )
 
+    origin_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='origin_notifications'
+    )  # Usuario que generó la acción
+
+    post = models.ForeignKey(
+        'Post', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )  
+
+    comment = models.ForeignKey(
+        'Comment', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    ) 
+
+    message = models.CharField(max_length=255)  # Texto de la notificación
+    is_read = models.BooleanField(default=False)  # Si ya fue leída
+    created_at = models.DateTimeField(auto_now_add=True)  # Fecha de creación
+
+    class Meta:
+        ordering = ['-created_at']  # Mostrar primero las más recientes
+
+    def __str__(self):
+        return f"Notificación para {self.user.username} - {self.message[:20]}"
+    
