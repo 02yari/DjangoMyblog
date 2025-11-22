@@ -1,4 +1,5 @@
-from django.db.models import Avg, Q
+from django.db.models import Avg, Q, Sum,  Value as V, Count
+from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import authenticate, login, logout
@@ -11,7 +12,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from .models import Post, Comment, Review, Reaction
+from .models import Post, Comment, Review, Reaction, CommentVote
 from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from taggit.models import Tag
 
@@ -21,6 +22,7 @@ REACTION_COOLDOWN = 2
 def post_list(request):
     """Vista para mostrar la lista de posts publicados"""
     posts = Post.objects.filter(published=True).order_by('-published_date')
+    
     # Paginación
     paginator = Paginator(posts, 10)  # 10 posts por página
     page_number = request.GET.get('page')
@@ -30,16 +32,13 @@ def post_list(request):
 def post_detail(request, slug):
     """Vista para mostrar un post específico con sus comentarios"""
     post = get_object_or_404(Post, slug=slug, published=True)
-    comments = post.comments.filter(active=True)
     new_comment = None
 
      # Calcular promedio de reviews
     average_rating = post.reviews.aggregate(Avg('rating'))['rating__avg']
 
     # Calcular conteo de reacciones
-    from .models import Reaction
     counts = { key: post.reactions.filter(type=key).count() for key,_ in Reaction.REACTION_CHOICES }
-
 
     # Verificar si el usuario ya hizo review
     user_has_reviewed = False
@@ -61,6 +60,12 @@ def post_detail(request, slug):
     else:
         comment_form = CommentForm()
         review_form = ReviewForm() 
+
+    comments = post.comments.filter(active=True, is_approved=True).annotate(
+        up_votes=Coalesce(Count('votes', filter=Q(votes__vote=1)), V(0)),
+        down_votes=Coalesce(Count('votes', filter=Q(votes__vote=-1)), V(0)),
+        total_score=Coalesce(Sum('votes__vote'), V(0)),  # opcional, total
+    ).order_by('-pinned', '-total_score', 'created_date')
 
     return render(request, 'blog/post_detail.html', {
         'post': post,
@@ -314,5 +319,45 @@ def toggle_reaction(request, post_id, reaction_type):
         )
         return HttpResponse(html)
 
-    # === RESPUESTA JSON POR DEFECTO ===
+
+    # Default -> JSON
     return JsonResponse({"status": "ok", "action": action, "counts": counts})
+
+@login_required
+def toggle_vote(request, comment_id, vote_type):
+    comment = get_object_or_404(Comment, id=comment_id)
+    user = request.user
+
+    if vote_type == "up":
+        value = 1
+    elif vote_type == "down":
+        value = -1
+    else:
+        return JsonResponse({"error": "Invalid vote type"}, status=400)
+
+    # Buscamos si ya existe un voto del usuario para ese comentario
+    vote, created = CommentVote.objects.get_or_create(comment=comment, user=user, defaults={"vote": value})
+
+    if not created:
+        if vote.vote == value:
+            vote.vote = 0 
+        else:
+            vote.vote = value 
+        vote.save()
+
+    # Contar votos actuales
+    up_count = CommentVote.objects.filter(comment=comment, vote=1).count()
+    down_count = CommentVote.objects.filter(comment=comment, vote=-1).count()
+
+    return JsonResponse({
+        "up": up_count,
+        "down": down_count,
+        "current": vote.vote
+    })
+
+def toggle_pin_comment(request, comment_id):
+    comment = get_object_or_404(Comment, id=comment_id)
+    comment.pinned = not comment.pinned
+    comment.save()
+    return redirect(comment.post.get_absolute_url())
+

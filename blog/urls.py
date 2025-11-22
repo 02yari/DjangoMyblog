@@ -20,7 +20,9 @@ urlpatterns = [
     path('post/<int:post_id>/comment/', views.add_comment, name='add_comment'),
     path('comment/<int:comment_id>/approve/', views.approve_comment, name='approve_comment'),
     path('comment/<int:comment_id>/reject/', views.reject_comment, name='reject_comment'),
-
+    path('comment/<int:comment_id>/vote/<str:vote_type>/', views.toggle_vote, name='vote_comment'),
+    path("comment/<int:comment_id>/toggle-pin/", views.toggle_pin_comment, name="toggle_pin_comment"),
+    
     path('post/<slug:slug>/review/', views.add_review, name='add_review'),
     path('tag/<slug:slug>/', views.posts_by_tag, name='posts_by_tag'),
     path('search/', views.search_posts, name='search_posts'),

@@ -48,11 +48,16 @@ class Comment(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
     active = models.BooleanField(default=True, verbose_name='Activo')
     is_approved = models.BooleanField(default=False, verbose_name='Aprobado')
+    pinned = models.BooleanField(default=False, verbose_name="Fijado")
 
     class Meta:
         ordering = ['created_date']
         verbose_name = 'Comentario'
         verbose_name_plural = 'Comentarios'
+    
+    @property
+    def score(self):
+        return self.votes.aggregate(total=models.Sum('vote'))['total'] or 0
 
     def __str__(self):
         if self.user:
@@ -127,29 +132,12 @@ class CommentVote(models.Model):
     ]
     comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="votes")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    vote = models.IntegerField(choices=VOTE_CHOICES, default=NEUTRAL)
+    vote = models.IntegerField(default=0)
     class Meta:
         unique_together = ("user", "comment")
 
     def __str__(self):
         return f"{self.user} → {self.comment} ({self.vote})"
 
-class CommentVote(models.Model):
-    UP = 1
-    DOWN = -1
-    NEUTRAL = 0
 
-    VOTE_CHOICES = [
-        (UP, "Upvote"),
-        (DOWN, "Downvote"),
-        (NEUTRAL, "Neutral"),
-    ]
-    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="votes")
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    vote = models.IntegerField(choices=VOTE_CHOICES, default=NEUTRAL)
-    class Meta:
-        unique_together = ("user", "comment")
-
-    def __str__(self):
-        return f"{self.user} → {self.comment} ({self.vote})"
 
