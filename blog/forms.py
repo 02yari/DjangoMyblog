@@ -1,8 +1,8 @@
 from django import forms
-from .models import Comment
+from .models import Comment, Post, Profile, Review
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
-from .models import Profile, Post, Review
+from django_ckeditor_5.widgets import CKEditor5Widget
 
 class CommentForm(forms.ModelForm):
     class Meta:
@@ -46,6 +46,12 @@ class ProfileForm(forms.ModelForm):
 
 #Formulario para crear/editar posts
 class PostForm(forms.ModelForm):
+    content = forms.CharField(
+        widget=CKEditor5Widget(
+            attrs={'class': 'django_ckeditor_5'},
+            config_name='default',  # usa el config definido en settings.py
+        )
+    )
     class Meta:
         model = Post
         fields = ['title', 'content', 'excerpt', 'cover', 'published']

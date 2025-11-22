@@ -140,3 +140,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = 'blog:login'
 LOGIN_REDIRECT_URL = 'blog:post_list'
 LOGOUT_REDIRECT_URL = 'blog:post_list'
+# CKEditor 5
+CKEDITOR_5_UPLOAD_PATH = "uploads/"  # carpeta dentro de MEDIA_ROOT
+CKEDITOR_5_BASEPATH = "/static/ckeditor5/"  # ruta para los archivos estáticos de CKEditor
+CKEDITOR_5_CONFIGS = {
+    'default': {
+        'toolbar': 'full',  # barra de herramientas completa
+        'height': 500,
+        'width': '100%',
+    }
+}
+

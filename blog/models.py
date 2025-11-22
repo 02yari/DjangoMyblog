@@ -8,10 +8,11 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from taggit.managers import TaggableManager
 from django_ckeditor_5.fields import CKEditor5Field
 from django.conf import settings
+from django.utils.text import slugify
 
 class Post(models.Model):
     title = models.CharField(max_length=200, verbose_name='Título')
-    slug = models.SlugField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Autor')
 
     #content = models.TextField(verbose_name='Contenido')
@@ -38,6 +39,18 @@ class Post(models.Model):
         self.published_date = timezone.now()
         self.published = True
         self.save()
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+
+            # si ya existe un slug igual, agrega un número
+            original_slug = self.slug
+            counter = 1
+            while Post.objects.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
+
+        super().save(*args, **kwargs)
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')

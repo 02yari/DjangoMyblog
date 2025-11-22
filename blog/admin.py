@@ -13,7 +13,7 @@ class PostAdmin(admin.ModelAdmin):
     
     fieldsets = (
         (None, {
-            'fields': ('title', 'slug', 'author', 'content')
+            'fields': ('title', 'slug', 'author', 'content', 'excerpt', 'cover')
         }),
         ('Opciones de publicación', {
             'fields': ('published', 'published_date'),

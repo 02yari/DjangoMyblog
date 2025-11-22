@@ -401,5 +401,7 @@ def open_notification(request, notification_id):
     if notification.comment:
         comment = notification.comment
         return redirect(f"{comment.post.get_absolute_url()}#comment-{comment.id}")
-
     return redirect(notification.post.get_absolute_url())
+
+
+    
