@@ -388,3 +388,18 @@ def profile(request):
     return render(request, "blog/profile.html", {
         "notifications": notifications
     })
+
+def open_notification(request, notification_id):
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+
+    # marcar como leída
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save()
+
+    # redirigir según sea post o comentario
+    if notification.comment:
+        comment = notification.comment
+        return redirect(f"{comment.post.get_absolute_url()}#comment-{comment.id}")
+
+    return redirect(notification.post.get_absolute_url())

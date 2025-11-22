@@ -28,5 +28,5 @@ urlpatterns = [
     path('search/', views.search_posts, name='search_posts'),
     path('ckeditor5/', include('django_ckeditor_5.urls')),
     path('post/<int:post_id>/react/<str:reaction_type>/', views.toggle_reaction, name='toggle_reaction'),
-
+    path("notifications/open/<int:notification_id>/", views.open_notification, name="open_notification"),
 ]
