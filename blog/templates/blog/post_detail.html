@@ -19,6 +19,22 @@
                         {{ post.created_date|date:"d M Y \a \l\a\s H:i" }}
                     {% endif %}  
                 </small>
+                {% if user.is_authenticated and user != post.author %}
+                    <div class="mt-2">
+                        {% if is_subscribed %}
+                            <form method="post" action="{% url 'blog:unsubscribe' username=post.author.username %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning btn-sm">Desuscribirse de {{ post.author.username }}</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'blog:subscribe' username=post.author.username %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary btn-sm">Suscribirse a {{ post.author.username }}</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
             </div>
             {% if post.image %}
                 <img src="{{ post.image.url }}" alt="{{ post.title }}" style="width: 200px;">

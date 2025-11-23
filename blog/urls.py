@@ -1,8 +1,5 @@
 from django.urls import path, include
 from . import views
-from django.contrib.auth import views as auth_views
-from .views import toggle_reaction
-
 
 app_name = 'blog'
 
@@ -13,9 +10,11 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('login/', views.login_view, name='login'),          # nuestra vista login
     path('logout/', views.logout_view, name='logout'),
+    
     # Perfil
     path('profile/', views.profile, name='profile'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
+    path('profile/<str:username>/', views.profile, name='profile_user'),
     #Notifiaciones
     path("notifications/open/<int:notification_id>/", views.open_notification, name="open_notification"),
     # Comentarios
@@ -35,4 +34,8 @@ urlpatterns = [
     path('search/', views.search_posts, name='search_posts'),
     # CKEditor
     path('ckeditor5/', include('django_ckeditor_5.urls')),
+    # redirige a tu propio perfil
+    path('subscribe/<str:username>/', views.subscribe, name='subscribe'),
+    path('unsubscribe/<str:username>/', views.unsubscribe, name='unsubscribe'),
+
 ]
