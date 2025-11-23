@@ -188,37 +188,52 @@ def delete_post(request, slug):
     return render(request, 'blog/post_confirm_delete.html', {'post': post})
 
 # vista para agregar comentarios
+@login_required
 def add_comment(request, post_id):
     post = get_object_or_404(Post, id=post_id)
 
     if request.method == "POST":
         content = request.POST.get("content")
         if content:
-            Comment.objects.create(post=post, user=request.user, content=content)
-            #detección de menciones al guardar un comentario
-            comment = Comment.objects.create(post=post, user=request.user, content=content)
-            # 🔹 Detectar menciones @username
+            # Crear comentario UNA sola vez
+            comment = Comment.objects.create(
+                post=post,
+                user=request.user,
+                content=content
+            )
+
+            # 🔹 Notificación al autor del post
+            if request.user != post.author:
+                Notification.objects.create(
+                    user=post.author,
+                    origin_user=request.user,
+                    post=post,
+                    comment=comment,
+                    message=f"{request.user.username} comentó en tu post: {post.title}",
+                )
+
+            # 🔹 Detección de menciones @username
             pattern = r"@(\w+)"
             mentioned_usernames = re.findall(pattern, comment.content)
-            #verificar si el usuario existe
+
             for username in mentioned_usernames:
                 user = User.objects.filter(username=username).first()
-                if user:
+                if user and user != post.author:
                     Notification.objects.create(
                         user=user,
                         origin_user=request.user,
                         post=post,
                         comment=comment,
                         message=f"@{request.user.username} te mencionó en un comentario.",
-                        is_read=False
                     )
-                # Si no existe el usuario, se ignora automáticamente
-            
-            messages.success(request, "Tu comentario ha sido enviado y está pendiente de aprobación.")
+
+            messages.success(request, "Tu comentario ha sido enviado exitosamente.")
+
         else:
             messages.error(request, "No puedes enviar un comentario vacío.")
 
     return redirect('blog:post_detail', slug=post.slug)
+
 
 
 @staff_member_required
@@ -320,6 +335,13 @@ def toggle_reaction(request, post_id, reaction_type):
             type=reaction_type
         )
         action = "added"
+        if request.user != post.author:
+            Notification.objects.create(
+                user=post.author,
+                origin_user=request.user,
+                post=post,
+                message=f"{request.user.username} reaccionó a tu post: {post.title}",
+        )
     
    # === RECALCULAR CONTEOS ===
     counts = {

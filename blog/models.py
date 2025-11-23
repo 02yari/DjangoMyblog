@@ -151,8 +151,7 @@ class CommentVote(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.comment} ({self.vote})"
-
-
+    
 class Notification(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, 

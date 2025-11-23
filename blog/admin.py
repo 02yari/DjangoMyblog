@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Post, Comment
+from .models import Post, Comment, Notification
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
@@ -47,3 +47,8 @@ class CommentAdmin(admin.ModelAdmin):
     def short_content(self, obj):
         return (obj.content[:47] + '...') if len(obj.content) > 50 else obj.content
     short_content.short_description = 'Comentario'
+
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'origin_user', 'message', 'is_read', 'created_at')
+    list_filter = ('is_read', 'created_at')
+    search_fields = ('message', 'user__username', 'origin_user__username')
