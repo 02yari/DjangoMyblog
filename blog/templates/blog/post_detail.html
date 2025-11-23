@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-
+{% load dict_utils %}
 {% block title %}{{ post.title }} - {{ block.super }}{% endblock %}
 
 {% block content %}
@@ -12,13 +12,44 @@
             
             <div class="text-muted mb-4">
                 <small>
-                    Publicado por <strong>{{ post.author.first_name }} {{ post.author.last_name }}</strong>
-                    el {{ post.published_date|date:"d M Y \a \l\a\s H:i" }}
+                    Publicado por <strong>{{ post.author.get_full_name|default:post.author.username }}</strong>
+                    {% if post.published_date %}
+                        {{ post.published_date|date:"d M Y \a \l\a\s H:i" }}
+                    {% else %}
+                        {{ post.created_date|date:"d M Y \a \l\a\s H:i" }}
+                    {% endif %}  
                 </small>
+                {% if user.is_authenticated and user != post.author %}
+                    <div class="mt-2">
+                        {% if is_subscribed %}
+                            <form method="post" action="{% url 'blog:unsubscribe' username=post.author.username %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning btn-sm">Desuscribirse de {{ post.author.username }}</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'blog:subscribe' username=post.author.username %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary btn-sm">Suscribirse a {{ post.author.username }}</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
             </div>
+            {% if post.image %}
+                <img src="{{ post.image.url }}" alt="{{ post.title }}" style="width: 200px;">
+            {% endif %}
+            {% if post.cover %}
+                <img src="{{ post.cover.url }}" class="img-fluid rounded mb-3" alt="Imagen de portada"  style="max-width: 400px; height: auto;">
+            {% endif %}
+
             
             <div class="post-content">
-                {{ post.content|linebreaks }}
+                {{ post.content|safe }}
+            </div>
+
+            <div id="reactions-area">
+                {% include "blog/_reactions_fragment.html" with post=post counts=counts %}
             </div>
 
             <!-- Aquí iría la sección 4 de mostrar promedio de ratings en detalle de post -->
@@ -46,27 +77,48 @@
             {% else %}
                 <p><a href="{% url 'blog:login' %}">Inicia sesión</a> para dejar una review.</p>
             {% endif %}
-
-
         </article>
 
         <!--Seccion de comentarios -->
+
         <hr>
         <h4>Comentarios</h4>
 
-        {% for comment in post.comments.all %}
-            {% if comment.is_approved %}
-                <div class="border p-2 mb-2 rounded bg-light">
-                    <strong>{{ comment.user.username }}</strong><br>
-                    <p>{{ comment.content }}</p>
-                    <small class="text-muted">{{ comment.created_date|date:"d M Y H:i" }}</small>
+        {% for comment in comments %}
+            <div id="comment-{{ comment.id }}" class="border p-2 mb-2 rounded bg-light {% if comment.pinned %}border-warning{% endif %}">
+                <strong>{{ comment.user.username }}</strong>
+                {% if comment.pinned %}<span class="badge bg-warning text-dark">Fijado</span>{% endif %}
+                <p>{{ comment.content }}</p>
 
-                    {% if user == post.author and not comment.is_approved %}
-                        <a href="{% url 'blog:approve_comment' comment.id %}" class="btn btn-success btn-sm mt-2">Aprobar</a>
-                        <a href="{% url 'blog:reject_comment' comment.id %}" class="btn btn-danger btn-sm mt-2">Rechazar</a>
-                    {% endif %}
+                <!-- Score y botones -->
+                <div class="d-flex align-items-center gap-2 mt-2">
+
+                    <!-- BOTÓN 👍 -->
+                    <button type="button"
+                            class="btn btn-sm btn-outline-success"
+                            onclick="voteComment({{ comment.id }}, 'up')">
+                        👍
+                    </button>
+                    <span id="up-{{ comment.id }}">{{ comment.up_votes }}</span>
+
+                    <!-- BOTÓN 👎 -->
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            onclick="voteComment({{ comment.id }}, 'down')">
+                        👎
+                    </button>
+                    <span id="down-{{ comment.id }}">{{ comment.down_votes }}</span>
                 </div>
-            {% endif %}
+
+                {% if user.is_staff %}
+                    <form method="post" action="{% url 'blog:toggle_pin_comment' comment.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-warning mt-2">
+                            {% if comment.pinned %}Desfijar{% else %}Fijar{% endif %}
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
         {% empty %}
             <p>No hay comentarios aún.</p>
         {% endfor %}
@@ -112,4 +164,32 @@
         </div>
     </div>
 </div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    const cookies = document.cookie ? document.cookie.split('; ') : [];
+    for (const cookie of cookies) {
+        const [key, value] = cookie.split('=');
+        if (key === name) cookieValue = decodeURIComponent(value);
+    }
+    return cookieValue;
+}
+
+function voteComment(commentId, voteType) {
+    fetch(`/comment/${commentId}/vote/${voteType}/`, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+            "X-Requested-With": "XMLHttpRequest",
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById(`up-${commentId}`).innerText = data.up;
+        document.getElementById(`down-${commentId}`).innerText = data.down;
+        document.getElementById(`total-${commentId}`).innerText = data.total;
+    });
+}
+</script>
 {% endblock %}

@@ -7,10 +7,12 @@ from django.dispatch import receiver
 from django.core.validators import MinValueValidator, MaxValueValidator
 from taggit.managers import TaggableManager
 from django_ckeditor_5.fields import CKEditor5Field
+from django.conf import settings
+from django.utils.text import slugify
 
 class Post(models.Model):
     title = models.CharField(max_length=200, verbose_name='Título')
-    slug = models.SlugField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
     author = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='Autor')
 
     #content = models.TextField(verbose_name='Contenido')
@@ -37,6 +39,18 @@ class Post(models.Model):
         self.published_date = timezone.now()
         self.published = True
         self.save()
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+
+            # si ya existe un slug igual, agrega un número
+            original_slug = self.slug
+            counter = 1
+            while Post.objects.filter(slug=self.slug).exists():
+                self.slug = f"{original_slug}-{counter}"
+                counter += 1
+
+        super().save(*args, **kwargs)
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
@@ -47,11 +61,16 @@ class Comment(models.Model):
     created_date = models.DateTimeField(auto_now_add=True, verbose_name='Fecha')
     active = models.BooleanField(default=True, verbose_name='Activo')
     is_approved = models.BooleanField(default=False, verbose_name='Aprobado')
+    pinned = models.BooleanField(default=False, verbose_name="Fijado")
 
     class Meta:
         ordering = ['created_date']
         verbose_name = 'Comentario'
         verbose_name_plural = 'Comentarios'
+    
+    @property
+    def score(self):
+        return self.votes.aggregate(total=models.Sum('vote'))['total'] or 0
 
     def __str__(self):
         if self.user:
@@ -61,18 +80,18 @@ class Comment(models.Model):
 # Clase profile
 
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     bio = models.TextField(max_length=500, blank=True)
 
     def __str__(self):
         return f'Perfil de {self.user.username}'
 
-#post_save para crear o actualizar el perfil del usuario automáticamente
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created and not instance.is_staff and not instance.is_superuser:
-        Profile.objects.create(user=instance)
+    #post_save para crear o actualizar el perfil del usuario automáticamente
+    @receiver(post_save, sender=User)
+    def create_user_profile(sender, instance, created, **kwargs):
+        if created and not instance.is_staff and not instance.is_superuser:
+            Profile.objects.create(user=instance)
 
 
 class Review(models.Model):
@@ -93,3 +112,107 @@ class Review(models.Model):
     def __str__(self):
         return f'Review de {self.user.username} en {self.post.title} ({self.rating})'
 
+
+
+class Reaction(models.Model):
+    post = models.ForeignKey('Post', on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    REACTION_CHOICES = [
+        ('like', '👍'),
+        ('love', '❤️'),
+        ('haha', '😂'),
+        ('wow', '😮'),
+    ]
+    type = models.CharField(max_length=10, choices=REACTION_CHOICES)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user', 'type')
+
+    def __str__(self):
+        return f"{self.user} reacted {self.type} on {self.post}"
+    
+class CommentVote(models.Model):
+    UP = 1
+    DOWN = -1
+    NEUTRAL = 0
+
+    VOTE_CHOICES = [
+        (UP, "Upvote"),
+        (DOWN, "Downvote"),
+        (NEUTRAL, "Neutral"),
+    ]
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    vote = models.IntegerField(default=0)
+    class Meta:
+        unique_together = ("user", "comment")
+
+    def __str__(self):
+        return f"{self.user} → {self.comment} ({self.vote})"
+    
+class Notification(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='notifications'
+    )
+
+    origin_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='origin_notifications'
+    )  # Usuario que generó la acción
+
+    post = models.ForeignKey(
+        'Post', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )  
+
+    comment = models.ForeignKey(
+        'Comment', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    ) 
+
+    message = models.CharField(max_length=255)  # Texto de la notificación
+    is_read = models.BooleanField(default=False)  # Si ya fue leída
+    created_at = models.DateTimeField(auto_now_add=True)  # Fecha de creación
+
+    class Meta:
+        ordering = ['-created_at']  # Mostrar primero las más recientes
+
+    def __str__(self):
+        return f"Notificación para {self.user.username} - {self.message[:20]}"
+
+class Subscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='subscriptions'
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        null=True, 
+        blank=True, 
+        on_delete=models.CASCADE,
+        related_name='subscribers'
+    )
+    tag = models.CharField(max_length=50, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'author', 'tag')  # evita duplicados
+
+    def __str__(self):
+        if self.author:
+            return f"{self.user} sigue a {self.author}"
+        else:
+            return f"{self.user} sigue el tag '{self.tag}'"

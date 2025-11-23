@@ -24,6 +24,19 @@
                     {% endif %}
                 {% endwith %}
                 <a href="{% url 'blog:profile' %}" class="btn btn-light btn-sm">Perfil</a>
+
+                  
+                <!-- Icono de campana con notificaciones no leídas -->
+                <a href="{% url 'blog:profile' %}" class="btn btn-light btn-sm position-relative">
+                    🔔
+                        {% if unread_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ unread_count }}
+                            </span>
+                        {% endif %}
+                </a>
+                
+
                 <a href="{% url 'blog:logout' %}" class="btn btn-light btn-sm">Cerrar sesión</a>
             {% else %}
                 <a href="{% url 'blog:login' %}" class="btn btn-light btn-sm">Iniciar sesión</a>
@@ -49,9 +62,33 @@
     <footer class="bg-dark text-white text-center py-4 mt-5">
         <p>&copy; 2025 Mi Blog. Hecho con Django</p>
     </footer>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.5"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+        <script>
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            const csrftoken = getCookie('csrftoken');
+
+            // Para HTMX: añadir header X-CSRFToken a todas las peticiones
+            document.addEventListener('htmx:configRequest', (event) => {
+                event.detail.headers['X-CSRFToken'] = csrftoken;
+            });
+        </script>
     
 </body>
 </html>
