@@ -14,6 +14,7 @@ from .models import Post, Comment, Review, Reaction, CommentVote, Notification, 
 from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from taggit.models import Tag
 import re
+from django.utils.feedgenerator import Rss201rev2Feed
 
 User = get_user_model()
 
@@ -383,3 +384,71 @@ def logout_view(request):
     logout(request)
     messages.success(request, 'Has cerrado sesión correctamente.')
     return redirect('blog:login')
+
+@login_required
+def subscribe_author(request, username):
+    author = get_object_or_404(User, username=username)
+    if request.user != author:
+        Subscription.objects.get_or_create(user=request.user, author=author)
+        messages.success(request, f"Te has suscrito a {author.username}")
+    return redirect('blog:profile_user', username=username)
+
+@login_required
+def unsubscribe_author(request, username):
+    author = get_object_or_404(User, username=username)
+    Subscription.objects.filter(user=request.user, author=author).delete()
+    messages.success(request, f"Te has dejado de suscribir de {author.username}")
+    return redirect('blog:profile_user', username=username)
+
+
+@login_required
+def subscribe_tag(request, tag_name):
+    Subscription.objects.get_or_create(user=request.user, tag=tag_name)
+    messages.success(request, f"Te has suscrito al tema: {tag_name}")
+    return redirect('blog:post_list')  # o la página donde estés mostrando posts
+
+@login_required
+def unsubscribe_tag(request, tag_name):
+    Subscription.objects.filter(user=request.user, tag=tag_name).delete()
+    messages.success(request, f"Te has dejado de suscribir al tema: {tag_name}")
+    return redirect('blog:post_list')
+
+def feed_author(request, username):
+    author = get_object_or_404(User, username=username)
+    posts = Post.objects.filter(author=author, published=True).order_by('-published_date')
+
+    feed = Rss201rev2Feed(
+        title=f"Posts de {author.username}",
+        link=f"/feed/author/{author.username}/",
+        description=f"Últimos posts publicados por {author.username}"
+    )
+
+    for post in posts:
+        feed.add_item(
+            title=post.title,
+            link=post.get_absolute_url(),
+            description=post.excerpt or post.content,
+            pubdate=post.published_date
+        )
+
+    return HttpResponse(feed.writeString('utf-8'), content_type='application/rss+xml')
+
+
+def feed_tag(request, tag):
+    posts = Post.objects.filter(tags__name__iexact=tag, published=True).order_by('-published_date')
+
+    feed = Rss201rev2Feed(
+        title=f"Posts con etiqueta #{tag}",
+        link=f"/feed/tag/{tag}/",
+        description=f"Últimos posts publicados con la etiqueta #{tag}"
+    )
+
+    for post in posts:
+        feed.add_item(
+            title=post.title,
+            link=post.get_absolute_url(),
+            description=post.excerpt or post.content,
+            pubdate=post.published_date
+        )
+
+    return HttpResponse(feed.writeString('utf-8'), content_type='application/rss+xml')
