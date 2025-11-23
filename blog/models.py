@@ -80,18 +80,18 @@ class Comment(models.Model):
 # Clase profile
 
 class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     bio = models.TextField(max_length=500, blank=True)
 
     def __str__(self):
         return f'Perfil de {self.user.username}'
 
-#post_save para crear o actualizar el perfil del usuario automáticamente
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created and not instance.is_staff and not instance.is_superuser:
-        Profile.objects.create(user=instance)
+    #post_save para crear o actualizar el perfil del usuario automáticamente
+    @receiver(post_save, sender=User)
+    def create_user_profile(sender, instance, created, **kwargs):
+        if created and not instance.is_staff and not instance.is_superuser:
+            Profile.objects.create(user=instance)
 
 
 class Review(models.Model):

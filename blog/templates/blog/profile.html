@@ -2,38 +2,57 @@
 {% block title %}Perfil{% endblock %}
 
 {% block content %}
-<h2>Perfil de {{ user.username }}</h2>
+<h2>Perfil de {{ profile_user.username }}</h2>
 
-<!-- Información del perfil -->
-<div class="mb-4"></div>
-  {% with profile=user.profile|default_if_none:'' %}
-    {% if profile and profile.avatar %}
-        <img src="{{ profile.avatar.url }}" alt="Avatar" width="150" class="rounded-circle mb-3">
-    {% endif %}
+<div class="mb-4">
     {% if profile %}
-        <p>{{ profile.bio }}</p>
+        {% if profile.avatar %}
+            <img src="{{ profile.avatar.url }}" alt="Avatar" width="150" class="rounded-circle mb-3">
+        {% endif %}
+        {% if profile.bio %}
+            <p>{{ profile.bio }}</p>
+        {% endif %}
+    {% else %}
+        <p>No hay información de perfil.</p>
     {% endif %}
-  {% endwith %}
-  <a href="{% url 'blog:profile_edit' %}" class="btn btn-primary">Editar perfil</a>
+    <p><strong>Suscriptores:</strong> {{ subscriber_count }}</p>
+
+    {% if request.user == profile_user %}
+        <a href="{% url 'blog:profile_edit' %}" class="btn btn-primary">Editar perfil</a>
+    {% endif %}
 </div>
+
 
 <hr>
 
 <!-- 🔔 SECCIÓN DE NOTIFICACIONES -->
+{% if request.user == profile_user %}
 <h3>🔔 Notificaciones</h3>
-
 <ul class="list-group">
     {% for notification in notifications %}
         <li class="list-group-item {% if not notification.is_read %}fw-bold{% endif %}">
             {{ notification.message }}
-
-             <a href="{% url 'blog:open_notification' notification.id %}">Ver</a>
-
+            <a href="{% url 'blog:open_notification' notification.id %}">Ver</a>
             <small class="text-muted"> - {{ notification.created_at|timesince }} atrás</small>
         </li>
     {% empty %}
         <li class="list-group-item">No tienes notificaciones.</li>
     {% endfor %}
 </ul>
+{% endif %}
 
+<!-- Botón de suscripción -->
+{% if request.user.is_authenticated and profile_user.username and request.user != profile_user %}
+    {% if is_subscribed %}
+        <form action="{% url 'blog:unsubscribe' profile_user.username %}" method="post">
+            {% csrf_token %}
+            <button type="submit"class="btn btn-warning">Dejar de seguir</button>
+        </form>
+    {% else %}
+        <form action="{% url 'blog:subscribe' profile_user.username %}" method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Suscribirse</button>
+        </form>
+    {% endif %}
+{% endif %}
 {% endblock %}
