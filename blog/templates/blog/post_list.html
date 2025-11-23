@@ -1,12 +1,10 @@
 {% extends 'base.html' %}
-
 {% block title %}Todos los Posts - {{ block.super }}{% endblock %}
 
 {% block content %}
 <div class="row">
     <div class="col-md-8">
         <h2>Últimos Posts creados</h2>
-        
         {% for post in page_obj %}
             <div class="card post-card mb-4 shadow-sm">
                 <div class="card-body">
@@ -17,12 +15,16 @@
                     </h3>
                     <p class="card-text text-muted">
                         <small>
-                            Por <strong>{{ post.author.first_name }} {{ post.author.last_name }}</strong>
-                            el {{ post.published_date|date:"d M Y" }}
+                            Publicado por <strong>{{ post.author.get_full_name|default:post.author.username }}</strong>
+                            {% if post.published_date %}
+                                {{ post.published_date|date:"d M Y \a \l\a\s H:i" }}
+                            {% else %}
+                                {{ post.created_date|date:"d M Y \a \l\a\s H:i" }}
+                            {% endif %}  
                         </small>
                     </p>
                     <p class="card-text">
-                        {{ post.content|truncatewords:30 }}
+                        {{ post.content|striptags|truncatewords:30 }}
                     </p>
                     <a href="{{ post.get_absolute_url }}" class="btn btn-primary">
                         Leer más
@@ -32,13 +34,20 @@
                     </span>
                 </div>
             </div>
-        {% empty %}
+            {% empty %}
             <div class="alert alert-info">
                 <h4>No hay posts publicados</h4>
                 <p>¡Vuelve pronto para ver nuevos contenidos!</p>
             </div>
         {% endfor %}
         
+        <!-- BOTÓN PARA CREAR POST -->
+        {% if user.is_authenticated %}
+        <div class="mb-4">
+            <a href="{% url 'blog:post_create' %}" class="btn btn-success">Crear nuevo post</a>
+        </div>
+        {% endif %}
+
         <!-- Paginación -->
         {% if page_obj.has_other_pages %}
             <nav aria-label="Paginación">

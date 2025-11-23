@@ -24,6 +24,19 @@
                     {% endif %}
                 {% endwith %}
                 <a href="{% url 'blog:profile' %}" class="btn btn-light btn-sm">Perfil</a>
+
+                  
+                <!-- Icono de campana con notificaciones no leídas -->
+                <a href="{% url 'blog:profile' %}" class="btn btn-light btn-sm position-relative">
+                    🔔
+                        {% if unread_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ unread_count }}
+                            </span>
+                        {% endif %}
+                </a>
+                
+
                 <a href="{% url 'blog:logout' %}" class="btn btn-light btn-sm">Cerrar sesión</a>
             {% else %}
                 <a href="{% url 'blog:login' %}" class="btn btn-light btn-sm">Iniciar sesión</a>

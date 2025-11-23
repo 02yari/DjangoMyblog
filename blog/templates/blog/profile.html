@@ -4,14 +4,36 @@
 {% block content %}
 <h2>Perfil de {{ user.username }}</h2>
 
-{% with profile=user.profile|default_if_none:'' %}
-  {% if profile and profile.avatar %}
-      <img src="{{ profile.avatar.url }}" alt="Avatar" width="150">
-  {% endif %}
-  {% if profile %}
-      <p>{{ profile.bio }}</p>
-  {% endif %}
-{% endwith %}
+<!-- Información del perfil -->
+<div class="mb-4"></div>
+  {% with profile=user.profile|default_if_none:'' %}
+    {% if profile and profile.avatar %}
+        <img src="{{ profile.avatar.url }}" alt="Avatar" width="150" class="rounded-circle mb-3">
+    {% endif %}
+    {% if profile %}
+        <p>{{ profile.bio }}</p>
+    {% endif %}
+  {% endwith %}
+  <a href="{% url 'blog:profile_edit' %}" class="btn btn-primary">Editar perfil</a>
+</div>
 
-<a href="{% url 'blog:profile_edit' %}" class="btn btn-primary">Editar perfil</a>
+<hr>
+
+<!-- 🔔 SECCIÓN DE NOTIFICACIONES -->
+<h3>🔔 Notificaciones</h3>
+
+<ul class="list-group">
+    {% for notification in notifications %}
+        <li class="list-group-item {% if not notification.is_read %}fw-bold{% endif %}">
+            {{ notification.message }}
+
+             <a href="{% url 'blog:open_notification' notification.id %}">Ver</a>
+
+            <small class="text-muted"> - {{ notification.created_at|timesince }} atrás</small>
+        </li>
+    {% empty %}
+        <li class="list-group-item">No tienes notificaciones.</li>
+    {% endfor %}
+</ul>
+
 {% endblock %}

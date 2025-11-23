@@ -12,13 +12,24 @@
             
             <div class="text-muted mb-4">
                 <small>
-                    Publicado por <strong>{{ post.author.first_name }} {{ post.author.last_name }}</strong>
-                    el {{ post.published_date|date:"d M Y \a \l\a\s H:i" }}
+                    Publicado por <strong>{{ post.author.get_full_name|default:post.author.username }}</strong>
+                    {% if post.published_date %}
+                        {{ post.published_date|date:"d M Y \a \l\a\s H:i" }}
+                    {% else %}
+                        {{ post.created_date|date:"d M Y \a \l\a\s H:i" }}
+                    {% endif %}  
                 </small>
             </div>
+            {% if post.image %}
+                <img src="{{ post.image.url }}" alt="{{ post.title }}" style="width: 200px;">
+            {% endif %}
+            {% if post.cover %}
+                <img src="{{ post.cover.url }}" class="img-fluid rounded mb-3" alt="Imagen de portada"  style="max-width: 400px; height: auto;">
+            {% endif %}
+
             
             <div class="post-content">
-                {{ post.content|linebreaks }}
+                {{ post.content|safe }}
             </div>
 
             <div id="reactions-area">

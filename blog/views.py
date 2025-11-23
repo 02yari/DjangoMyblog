@@ -12,9 +12,10 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from .models import Post, Comment, Review, Reaction, CommentVote
+from .models import Post, Comment, Review, Reaction, CommentVote, Notification, User
 from .forms import CommentForm, SignUpForm, ProfileForm, PostForm, ReviewForm
 from taggit.models import Tag
+import re
 
 # Cooldown en segundos entre reacciones (por usuario+post)
 REACTION_COOLDOWN = 2
@@ -187,17 +188,52 @@ def delete_post(request, slug):
     return render(request, 'blog/post_confirm_delete.html', {'post': post})
 
 # vista para agregar comentarios
+@login_required
 def add_comment(request, post_id):
     post = get_object_or_404(Post, id=post_id)
 
     if request.method == "POST":
         content = request.POST.get("content")
         if content:
-            Comment.objects.create(post=post, user=request.user, content=content)
-            messages.success(request, "Tu comentario ha sido enviado y está pendiente de aprobación.")
+            # Crear comentario UNA sola vez
+            comment = Comment.objects.create(
+                post=post,
+                user=request.user,
+                content=content
+            )
+
+            # 🔹 Notificación al autor del post
+            if request.user != post.author:
+                Notification.objects.create(
+                    user=post.author,
+                    origin_user=request.user,
+                    post=post,
+                    comment=comment,
+                    message=f"{request.user.username} comentó en tu post: {post.title}",
+                )
+
+            # 🔹 Detección de menciones @username
+            pattern = r"@(\w+)"
+            mentioned_usernames = re.findall(pattern, comment.content)
+
+            for username in mentioned_usernames:
+                user = User.objects.filter(username=username).first()
+                if user and user != post.author:
+                    Notification.objects.create(
+                        user=user,
+                        origin_user=request.user,
+                        post=post,
+                        comment=comment,
+                        message=f"@{request.user.username} te mencionó en un comentario.",
+                    )
+
+            messages.success(request, "Tu comentario ha sido enviado exitosamente.")
+
         else:
             messages.error(request, "No puedes enviar un comentario vacío.")
+
     return redirect('blog:post_detail', slug=post.slug)
+
 
 
 @staff_member_required
@@ -299,6 +335,13 @@ def toggle_reaction(request, post_id, reaction_type):
             type=reaction_type
         )
         action = "added"
+        if request.user != post.author:
+            Notification.objects.create(
+                user=post.author,
+                origin_user=request.user,
+                post=post,
+                message=f"{request.user.username} reaccionó a tu post: {post.title}",
+        )
     
    # === RECALCULAR CONTEOS ===
     counts = {
@@ -361,3 +404,26 @@ def toggle_pin_comment(request, comment_id):
     comment.save()
     return redirect(comment.post.get_absolute_url())
 
+@login_required
+def profile(request):
+    notifications = request.user.notifications.order_by('-created_at')
+    return render(request, "blog/profile.html", {
+        "notifications": notifications
+    })
+
+def open_notification(request, notification_id):
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+
+    # marcar como leída
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save()
+
+    # redirigir según sea post o comentario
+    if notification.comment:
+        comment = notification.comment
+        return redirect(f"{comment.post.get_absolute_url()}#comment-{comment.id}")
+    return redirect(notification.post.get_absolute_url())
+
+
+    
