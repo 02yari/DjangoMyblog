@@ -190,4 +190,29 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notificación para {self.user.username} - {self.message[:20]}"
-    
+
+class Subscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='subscriptions'
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        null=True, 
+        blank=True, 
+        on_delete=models.CASCADE,
+        related_name='subscribers'
+    )
+    tag = models.CharField(max_length=50, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'author', 'tag')  # evita duplicados
+
+    def __str__(self):
+        if self.author:
+            return f"{self.user} sigue a {self.author}"
+        else:
+            return f"{self.user} sigue el tag '{self.tag}'"
